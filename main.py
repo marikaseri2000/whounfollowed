@@ -56,6 +56,8 @@ def main()-> None:
             nome_utente: str= input("Inserisci il nome utente che vuoi analizzare del profilo Github:")
             if not nome_utente:
                 raise ValueError("Il nome utente non può essere vuoto.")
+            
+            # TODO :Il nome exit esiste già
             if nome_utente.strip().lower() == "opsexit":
                 break
             print(f"Stai cercando: {nome_utente}")       
