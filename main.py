@@ -24,13 +24,44 @@ OPERAZIONI DA COMPIERE:
 """
 from requests import get
 import re
+import uuid
+import datetime
+import json
 
 #emanuelegurini
+#r'<span class="Link--secondary(?: pl-1)?">([^<]+)</span>'
 
 BASE_URL: int = "https://github.com/"
 END_URL: str="tab=followers"
 
 PATTERN: str= r'<a\s+[^>]*href="https://github\.com/([^/]+)\?page=(\d+)&amp;tab=followers"[^>]*>Next</a>'
+PATTERN_USER= r'<span class="Link--secondary(?: pl-1)?">([^<]+)</span>'
+
+def create_record_object(user_list: list[str]) -> dict[str, str]:
+    if not user_list:
+        return None
+    
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    clean_date = now_utc.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
+    return {
+        'id': str(uuid.uuid4()),  
+        'createdAt': clean_date,  
+        'users': user_list,
+        'numberOfUsers': len(user_list)
+    }
+
+def save(db_name: str, new_value: dict [str, str]) -> bool:
+    db: list[str]=[]
+    
+    with open(f"db/name{db_name}", "r") as f:
+        value=json.load(f)
+        db.extend(value)
+    db.append(new_value)
+    
+    with open(f"db/name{db_name}", "w", encoding='utf-8') as f:
+        json.dump(db, f, indent=4, ensure_ascii=False)
+    return bool
 
 """
 1. leggere file
@@ -48,6 +79,7 @@ def is_next_button_present(text: str)->bool:
 def main()-> None:
     
     controller: bool= False
+    counter: int = 0
     
     print("Start del programma")
     
@@ -72,12 +104,9 @@ def main()-> None:
 
         except Exception as e:
             print("OPS! Qualcosa è andato storto: {e}") 
-    
-
-    counter: int = 1
-    
-    
+        
     while controller:
+        counter: int = counter + 1
         url = f"{BASE_URL}{nome_utente}?page={counter}&{END_URL}"
         
         try:
@@ -88,14 +117,18 @@ def main()-> None:
                 #is_next_button_present(response.text)
                 f.write(response.text)
                 controller = is_next_button_present(response.text)
-                
-                if controller:
-                    counter = counter + 1
-                
                 print("File salvato.")
         except Exception as e:
             print(f"Errore: {e}")
-    
+
+    lista_utenti: list[str]=[]
+    for i in range(counter):
+        print(f"Counter: {i+1}")
+        with open(f"tmp/pagina-{i+1}.txt", "r") as f:
+            text=f.read()
+            lista_utenti.extend(re.findall(PATTERN_USER, text))
+    #abbiamo creato il nostro record
+    save("db.json", create_record_object(lista_utenti))
     print("Fine programma, arrivederci.")
 
 if __name__=="__main__":
